@@ -39,9 +39,15 @@ def imshow(tensor, title=None):
 # VGG19 model
 cnn = models.vgg19(pretrained=True).features.to(device).eval()
 
-# Normalization
-cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
-cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
+# Normalization layer (proper way)
+class Normalization(nn.Module):
+    def __init__(self, mean, std):
+        super(Normalization, self).__init__()
+        self.mean = mean.clone().detach().view(-1, 1, 1).to(device)
+        self.std = std.clone().detach().view(-1, 1, 1).to(device)
+
+    def forward(self, img):
+        return (img - self.mean) / self.std
 
 # Content loss module
 class ContentLoss(nn.Module):
@@ -75,12 +81,10 @@ class StyleLoss(nn.Module):
 content_layers = ['conv_4']
 style_layers = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
 
-# Model builder
+# Build model with inserted loss layers
 def get_style_model_and_losses(cnn, normalization_mean, normalization_std, style_img, content_img):
-    normalization = nn.Sequential(
-        nn.BatchNorm2d(3),  # Add dummy normalization (torchvision uses it differently)
-    )
-    
+    normalization = Normalization(normalization_mean, normalization_std)
+
     content_losses = []
     style_losses = []
 
@@ -123,20 +127,24 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std, style
 
     return model, style_losses, content_losses
 
-# Clone input
+# Image to optimize
 input_img = original_img.clone()
 input_img.requires_grad_(True)
+
+# Normalization values used in VGG
+cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
+cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
 # Get model and losses
 model, style_losses, content_losses = get_style_model_and_losses(
     cnn, cnn_normalization_mean, cnn_normalization_std, style_img, original_img
 )
 
-# Adam optimizer
+# Optimizer
 optimizer = optim.Adam([input_img], lr=0.01)
 
-# Train
-num_steps = 600
+# Training
+num_steps = 6000
 style_losses_history = []
 content_losses_history = []
 steps = []
@@ -162,21 +170,21 @@ for step in range(1, num_steps + 1):
         print(f"Step {step}: Style Loss = {style_score.item():.4f}, Content Loss = {content_score.item():.4f}")
         imshow(input_img, title=f"Step {step}")
 
-# Final result
+# Final image
 input_img.data.clamp_(0, 1)
 imshow(input_img, title='Final Output')
 final_image = input_img.cpu().clone().squeeze(0)
 final_image = transforms.ToPILImage()(final_image)
 final_image.save("stylized_output_adam.png")
 
-# Plot loss curves
+# Plot losses
 plt.figure()
 plt.plot(steps, style_losses_history, label='Style Loss')
 plt.plot(steps, content_losses_history, label='Content Loss')
 plt.xlabel("Steps")
 plt.ylabel("Loss")
-plt.legend()
 plt.title("Loss Curves")
+plt.legend()
 plt.grid(True)
 plt.savefig("loss_curves.png")
 plt.show()
