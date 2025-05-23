@@ -121,7 +121,7 @@ optimizer = optim.LBFGS([input_img])
 model, style_losses, content_losses = get_style_model_and_losses(cnn, cnn_normalization_mean, cnn_normalization_std, style_img, original_img)
 
 run=[0]
-while run[0] <= 300:
+while run[0] <= 6000:
   def closure():
     input_img.data.clamp_(0, 1)
 
@@ -137,6 +137,7 @@ while run[0] <= 300:
     if run[0] % 50 == 0:
       print(f'Run {run[0]}:')
       print(f'Style Loss: {style_score.item():4f} Content Loss: {content_score.item():4f}')
+      imshow(input_img, title=f'step {run[0]}')
 
     return style_score + content_score
   
