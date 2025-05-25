@@ -24,8 +24,8 @@ def load_image(image_name):
     return image.to(device, torch.float)
 
 # Load images
-original_img = load_image("owl.png")
-style_img = load_image("style.jpg")
+original_img = load_image("LmpwZw.jpg")
+style_img = load_image("NDA.jpg")
 
 # Display image
 def imshow(tensor, title=None):
@@ -39,7 +39,7 @@ def imshow(tensor, title=None):
 # VGG19 model
 cnn = models.vgg19(pretrained=True).features.to(device).eval()
 
-# Normalization layer (proper way)
+# Normalization layer for VGG
 class Normalization(nn.Module):
     def __init__(self, mean, std):
         super(Normalization, self).__init__()
@@ -141,10 +141,10 @@ model, style_losses, content_losses = get_style_model_and_losses(
 )
 
 # Optimizer
-optimizer = optim.Adam([input_img], lr=0.01)
+optimizer = optim.Adam([input_img], lr=0.01) # for faster performance use LBFGS
 
 # Training
-num_steps = 6000
+num_steps = 6000 # for faster performance use 1000
 style_losses_history = []
 content_losses_history = []
 steps = []
